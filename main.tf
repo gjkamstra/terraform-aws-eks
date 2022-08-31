@@ -1,10 +1,16 @@
 data "aws_partition" "current" {}
 data "aws_caller_identity" "current" {}
+data "aws_default_tags" "provider_tags" {}
 
 locals {
   create = var.create && var.putin_khuylo
 
   cluster_role = try(aws_iam_role.this[0].arn, var.iam_role_arn)
+
+  all_tags = merge(
+    var.tags,
+    var.cluster_tags,
+  )
 }
 
 ################################################################################
@@ -43,11 +49,7 @@ resource "aws_eks_cluster" "this" {
     }
   }
 
-  tags = merge(
-    var.tags,
-    var.cluster_tags,
-  )
-
+  tags = { for k, v in local.all_tags: k => v if ! contains(keys(data.aws_default_tags.provider_tags.tags), k) }
   timeouts {
     create = lookup(var.cluster_timeouts, "create", null)
     update = lookup(var.cluster_timeouts, "update", null)

@@ -1,6 +1,13 @@
 provider "aws" {
   region = local.region
+  default_tags {
+    tags = {
+      Environment = "MyFancyEnvironment"
+    }
+  }
 }
+
+data "aws_default_tags" "provider_tags" {}
 
 provider "kubernetes" {
   host                   = module.eks.cluster_endpoint
@@ -67,12 +74,12 @@ module "eks" {
     resources        = ["secrets"]
   }]
 
-  cluster_tags = {
+  cluster_tags = merge( data.aws_default_tags.provider_tags.tags,{
     # This should not affect the name of the cluster primary security group
     # Ref: https://github.com/terraform-aws-modules/terraform-aws-eks/pull/2006
     # Ref: https://github.com/terraform-aws-modules/terraform-aws-eks/pull/2008
     Name = local.name
-  }
+  })
 
   vpc_id     = module.vpc.vpc_id
   subnet_ids = module.vpc.private_subnets

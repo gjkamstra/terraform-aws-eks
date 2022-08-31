@@ -1,10 +1,12 @@
 data "aws_partition" "current" {}
 data "aws_caller_identity" "current" {}
+data "aws_default_tags" "provider_tags" {}
 
 locals {
   create = var.create && var.putin_khuylo
 
   cluster_role = try(aws_iam_role.this[0].arn, var.iam_role_arn)
+  cluster_tags_with_provider_tags = merge(var.cluster_tags,data.aws_default_tags.provider_tags.tags)
 }
 
 ################################################################################
@@ -66,7 +68,7 @@ resource "aws_ec2_tag" "cluster_primary_security_group" {
   # This should not affect the name of the cluster primary security group
   # Ref: https://github.com/terraform-aws-modules/terraform-aws-eks/pull/2006
   # Ref: https://github.com/terraform-aws-modules/terraform-aws-eks/pull/2008
-  for_each = { for k, v in merge(var.tags, var.cluster_tags) : k => v if local.create && k != "Name" && var.create_cluster_primary_security_group_tags }
+  for_each = { for k, v in merge(var.tags, local.cluster_tags_with_provider_tags) : k => v if local.create && k != "Name" && var.create_cluster_primary_security_group_tags }
 
   resource_id = aws_eks_cluster.this[0].vpc_config[0].cluster_security_group_id
   key         = each.key
